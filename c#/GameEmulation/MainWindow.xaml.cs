@@ -24,23 +24,13 @@ namespace GameEmulation
         {
             InitializeComponent();
             InitializeSerialPort();
+            endGame();
         }
 
         private void GameButton_Click(object sender, RoutedEventArgs e)
         {
-            Brush brush;
-            System.Windows.Media.Color Red = System.Windows.Media.Color.FromRgb(255, 0, 0);
-            System.Windows.Media.Color LimeGreen = System.Windows.Media.Color.FromRgb(50, 205, 50);
-            if (endGame())
-            {
-                brush = new SolidColorBrush(Red);
-                GameButton.Content = "Start game";
-            } else
-            {
-                brush = new SolidColorBrush(LimeGreen);
-                GameButton.Content = "End game";
-            }
-            GameStatus.Fill = brush;
+            endGame();
+            _serialPort.Write("e");
         }
         private void InitializeSerialPort()
         {
@@ -78,6 +68,15 @@ namespace GameEmulation
                     // Assuming there's a TextBox named "ReceivedDataTextBox" in your XAML
                     ReceivedDataTextBox.AppendText(data);
                 });
+
+                if(data.Trim() == "s")
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        // Assuming there's a TextBox named "ReceivedDataTextBox" in your XAML
+                        startGame();
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -88,14 +87,18 @@ namespace GameEmulation
             }
         }
 
-        private bool endGame()
+        private void startGame()
         {
-            if ((string)GameButton.Content == "Start game")
-            {
-                return false;
-            }
-            _serialPort.Write("stop");
-            return true;
+            System.Windows.Media.Color LimeGreen = System.Windows.Media.Color.FromRgb(50, 205, 50);
+            GameStatus.Fill = new SolidColorBrush(LimeGreen);
+            GameButton.IsEnabled = true;
+        }
+
+        private void endGame()
+        {
+            System.Windows.Media.Color Red = System.Windows.Media.Color.FromRgb(255, 0, 0);
+            GameStatus.Fill = new SolidColorBrush(Red);
+            GameButton.IsEnabled = false;
         }
 
         private void Window_Closed(object sender, EventArgs e)

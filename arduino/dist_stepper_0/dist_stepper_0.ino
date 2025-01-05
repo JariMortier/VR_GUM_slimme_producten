@@ -39,8 +39,9 @@ bool step(int steps, int speed, bool locking) {  //speed rond 800 zetten
     if (!digitalRead(limitPin)) {
       digitalWrite(stepPin, LOW);
       delay(100);  // touw laten zakken door zwaartekracht.
-      digitalWrite(stepPin, High);
-      calibrate() return HIGH;
+      digitalWrite(stepPin, HIGH);
+      calibrate();
+      return HIGH;
     }
     digitalWrite(stepPin, !locking);
     delayMicroseconds(speed);
@@ -85,7 +86,7 @@ int distance() {  //takes about 200µs
   return distance * 2;
 }
 
-void stapAf(){
+void stapAf() {
   t0 = millis();
   bool flashState = LOW;
   while (digitalRead(pressurePin)) {
@@ -143,12 +144,14 @@ void loop() {
         Serial.println(steps);
 
         if (step(steps, 800, HIGH)) {
-          goto case 6:  // error handling
+          state = 6;  // error handling
+          break;
         }
       }
 
       if (step(200, 800, HIGH)) {  // nog een paar cm zakken (JUISTE STEPS NOG IN TE VULLEN) ------------------------------------------------------------------------------
-        goto case 6:
+        state = 6;  // error handling
+        break;
       }
 
       Serial.println("s");  // game start commando (iets van safety toevoegen voor 100% zekere overdracht?)
@@ -168,24 +171,26 @@ void loop() {
         }
         if (fadeVal == 255) {
           fadeDir = LOW;
-        } else if (fadeVal == 0){
+        } else if (fadeVal == 0) {
           fadeDir = HIGH;
         }
       }
       setColor(0, 0, fadeVal);
 
-      if(Serial.available() > 0){
-        int input = (char) Serial.read(); // wachten op "e" in de Serial bus (stop signal)
-        if (input == 'e'){
-          goto case 3;
+      if (Serial.available() > 0) {
+        int input = (char)Serial.read();  // wachten op "e" in de Serial bus (stop signal)
+        if (input == 'e') {
+          state = 3;
         }
       }
       break;
 
-    case 3: //game is over, wachten tot user is afgestapt, dan bril optillen.
+    case 3:  //game is over, wachten tot user is afgestapt, dan bril optillen.
       stapAf();
+      // meten ofdat bril is afgezet met distance sensor!!!
       if (step(100, 800, HIGH)) {
-        goto case 6:  // error handling
+        state = 6;  // error handling
+        break;
       }
       delay(1000);
       calibrate();
