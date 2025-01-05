@@ -22,7 +22,7 @@ bool step(int steps, int speed, bool locking) { //speed rond 800 zetten
   digitalWrite(dirPin, (steps > 0));
   steps = abs(steps);
   for(int i = 0; i < steps; i++){
-    if(!limitPin){
+    if(!digitalRead(limitPin)){
       height = offset;
       return LOW;
     }
