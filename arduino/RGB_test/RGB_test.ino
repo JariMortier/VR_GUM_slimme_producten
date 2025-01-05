@@ -57,7 +57,6 @@ double hueToRgb(double p, double q, double t) {
   return p;
 }
 
-
 void setup() {
   Serial.begin(9600);
 
@@ -66,39 +65,48 @@ void setup() {
   pinMode(bluePin, OUTPUT);
 }
 
+String input = "";
+
 void loop() {
-  /*
-  setColorHSL(hue, 1, 0.5);
-  hue += 0.002;
-  if(hue > 1){
-    hue -= 1;
-  }
-  delay(10);*/
-  
   if(Serial.available() > 0){
-    int input = Serial.read();
-    switch(input){
-      case 114:
-        setColorRGB(255, 0, 0);
-        Serial.println("red selected");
-        break;
-
-      case 103:
-        setColorRGB(0, 255, 0);
-        Serial.println("green selected");
-        break;
-
-      case 98:
-        setColorRGB(0, 0, 255);
-        Serial.println("blue selected");
-        break;
-
-      default:
-        setColorRGB(0, 0, 0);
-        Serial.println("no color selected");
-        break;
+    input = "";
+    delay(20);
+    while(Serial.available() > 0){
+      input += (char) Serial.read();
     }
-    delay(1000);
+    if(input == "red"){
+    Serial.println("red selected");
+    }
+    else if(input == "green"){
+      Serial.println("green selected");
+    }
+    else if(input == "blue"){
+      Serial.println("blue selected");
+    }
+    else if(input == "rave"){
+      Serial.println("rave mode activated");
+    } else {
+      Serial.println("no color selected");
+    }
   }
   
+  if(input == "red"){
+    setColorRGB(255, 0, 0);
+  }
+  else if(input == "green"){
+    setColorRGB(0, 255, 0);
+  }
+  else if(input == "blue"){
+    setColorRGB(0, 0, 255);
+  }
+  else if(input == "rave"){
+    setColorHSL(hue, 1, 0.5);
+    hue += 0.002;
+    if(hue > 1){
+      hue -= 1;
+    }
+  } else {
+    setColorRGB(0, 0, 0);
+  }
+  delay(10);
 }

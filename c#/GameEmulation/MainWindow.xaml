@@ -7,9 +7,15 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
-        <TextBlock HorizontalAlignment="Left" Height="16" Margin="355,140,0,0" TextWrapping="Wrap" Text="Game status" VerticalAlignment="Top" Width="66"/>
-        <Button Content="End game" HorizontalAlignment="Left" Margin="379,168,0,0" VerticalAlignment="Top"/>
-        <Rectangle HorizontalAlignment="Left" Height="20" Margin="426,140,0,0" Fill="LimeGreen" Stroke="Black" VerticalAlignment="Top" Width="20"/>
-
+        <TextBlock HorizontalAlignment="Left" Height="16" Margin="13,20,0,0" TextWrapping="Wrap" Text="Game status" VerticalAlignment="Top" Width="66"/>
+        <Button Name="GameButton" Content="End game" HorizontalAlignment="Left" Margin="26,49,0,0" VerticalAlignment="Top" Click="GameButton_Click"/>
+        <Rectangle Name="GameStatus" HorizontalAlignment="Left" Height="20" Margin="84,20,0,0" Fill="LimeGreen" Stroke="Black" VerticalAlignment="Top" Width="20"/>
+        <TextBox x:Name="ReceivedDataTextBox" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Margin="109,10,10,10" />
+        <Button Name="SerialButton" Content="Send" HorizontalAlignment="Left" Margin="39,110,0,0" VerticalAlignment="Top" Click="SerialButton_Click"/>
+        <TextBox Name="SerialBox" HorizontalAlignment="Left" Margin="10,87,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="94"/>
+        <Button x:Name="RedButton"  Background="Red" Content="" HorizontalAlignment="Left" Margin="19,147,0,0" VerticalAlignment="Top" Width="20" Click="RedButton_Click"/>
+        <Button x:Name="GreenButton"  Background="Green" Content="" HorizontalAlignment="Left" Margin="44,147,0,0" VerticalAlignment="Top" Width="20" Click="GreenButton_Click"/>
+        <Button x:Name="BlueButton"  Background="Blue" Content="" HorizontalAlignment="Left" Margin="69,147,0,0" VerticalAlignment="Top" Width="20" Click="BlueButton_Click"/>
+        <Button x:Name="RaveButton"  Content="Rave mode" HorizontalAlignment="Left" Margin="21,172,0,0" VerticalAlignment="Top" Width="68" RenderTransformOrigin="0.21,0.022" Click="RaveButton_Click"/>
     </Grid>
 </Window>
