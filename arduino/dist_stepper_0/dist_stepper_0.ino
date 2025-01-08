@@ -14,18 +14,20 @@ const uint8_t treshold = 100;  //----------------- nog in te stellen (in mm)----
 
 //buttons
 const uint8_t limitPin = 3;
-#define pressurePin A1
+#define pressurePin A0
 
 //rgb
 const uint8_t redPin = 11;
 const uint8_t greenPin = 10;
 const uint8_t bluePin = 9;
 
-int dist = 0;
+double dist = 0.0;
 int state = 0;
 
 byte fadeVal = 0;
 bool fadeDir = HIGH;
+
+double sinVal = 0.0;
 
 //timing
 uint32_t t0 = 0;
@@ -69,9 +71,8 @@ void calibrate() {
   Serial.println("done!");
 }
 
-int distance() {  //takes about 200µs
-  int distance = 0;
-  int duration = 0;
+double distance() {  //takes about 200µs
+  double distance = 0;
   for (int i = 0; i < 5; i++) {
     digitalWrite(trigPin, LOW);
     delay(2);
@@ -80,7 +81,7 @@ int distance() {  //takes about 200µs
     delay(10);
     digitalWrite(trigPin, LOW);
 
-    float timing = pulseIn(echoPin, HIGH);
+    double timing = pulseIn(echoPin, HIGH);
     distance = (timing * 0.034) / 2;
   }
   return distance * 2;
@@ -89,7 +90,26 @@ int distance() {  //takes about 200µs
 void stapAf() {
   t0 = millis();
   bool flashState = LOW;
-  while (digitalRead(pressurePin)) {
+  while (analogRead(pressurePin) > 350) {
+    t1 = millis();
+    if (t0 - t1 >= 200) {
+      t0 = millis();
+      flashState = !flashState;
+    }
+
+    if (flashState) {
+      setColor(255, 0, 0);
+    } else {
+      setColor(0, 0, 0);
+    }
+  }
+}
+
+void zetBrilAf() {
+  t0 = millis();
+  bool flashState = LOW;
+  distance();
+  while (distance() <= treshold) {
     t1 = millis();
     if (t0 - t1 >= 200) {
       t0 = millis();
@@ -123,7 +143,7 @@ void loop() {
   switch (state) {
     case 0:  // wachten tot user 2s stilstaat
       setColor(0, 255, 0);
-      if (digitalRead(pressurePin)) {
+      if (analogRead(pressurePin) > 350) {
         if (t1 - t0 >= 2000) {
           state = 1;
         }
@@ -136,12 +156,9 @@ void loop() {
       setColor(255, 0, 0);
       while (dist > treshold) {
         dist = distance();
-        Serial.print("distance: ");
-        Serial.println(dist);
+        dist = min(100, dist);  // arbitrair 100 gekozen
 
-        dist = min(10, dist);  // arbitrair 10 gekozen
         int steps = (int)(-dist * STEPS_PER_MM);
-        Serial.println(steps);
 
         if (step(steps, 800, HIGH)) {
           state = 6;  // error handling
@@ -157,11 +174,13 @@ void loop() {
       Serial.println("s");  // game start commando (iets van safety toevoegen voor 100% zekere overdracht?)
       state = 2;
       fadeVal = 0;
-      fadeDir = HIGH;
-      t0 = millis();
+      sinVal = 0.0;
+      //fadeDir = HIGH;
+      //t0 = millis();
       break;
 
     case 2:  //game is bezig, wacht op serial bus commando
+      /*
       if (t1 - t0 >= 20) {
         t0 = millis();
         if (fadeDir) {
@@ -174,7 +193,10 @@ void loop() {
         } else if (fadeVal == 0) {
           fadeDir = HIGH;
         }
-      }
+      }*/
+      fadeVal = (byte) (127.5 + 127.5 * sin(sinVal));
+      sinVal += 0.001;
+
       setColor(0, 0, fadeVal);
 
       if (Serial.available() > 0) {
@@ -186,9 +208,9 @@ void loop() {
       break;
 
     case 3:  //game is over, wachten tot user is afgestapt, dan bril optillen.
+      zetBrilAf();
       stapAf();
-      // meten ofdat bril is afgezet met distance sensor!!!
-      if (step(100, 800, HIGH)) {
+      if (step((int) 100 * STEPS_PER_MM, 800, HIGH)) {
         state = 6;  // error handling
         break;
       }

@@ -14,7 +14,7 @@ const uint8_t treshold = 100;  //----------------- nog in te stellen (in mm)----
 
 //buttons
 const uint8_t limitPin = 3;
-#define pressurePin A1
+#define pressurePin A0
 
 //rgb
 const uint8_t redPin = 11;
@@ -82,7 +82,7 @@ double hueToRgb(double p, double q, double t) {
 void stapAf(){
   t0 = millis();
   bool flashState = LOW;
-  while (digitalRead(pressurePin)) {
+  while (analogRead(pressurePin) > 350) {
     t1 = millis();
     if (t1 - t0 >= 300) {
       t0 = millis();
@@ -119,7 +119,7 @@ void loop() {
         hue -= 1;
       }
 
-      if (digitalRead(pressurePin)) {
+      if (analogRead(pressurePin) > 350) {
         if (t1 - t0 >= 2000) {
           state = 1;
         }

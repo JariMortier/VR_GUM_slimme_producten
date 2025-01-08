@@ -93,9 +93,9 @@ void loop()
   timing = pulseIn(echo_pin, HIGH);
   distance = (timing * 0.034) / 2;
   */
-  Serial.print("Distance: ");
-  Serial.print(distance());
-  Serial.println("mm");
+  //Serial.print("Distance: ");
+  Serial.println(distance());
+  //Serial.println("mm");
   
   delay(100);
 }
