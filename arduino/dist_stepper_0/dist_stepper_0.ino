@@ -10,7 +10,7 @@ const double STEPS_PER_MM = 4.169186;
 //dist sensor
 const uint8_t trigPin = 5;
 const uint8_t echoPin = 6;
-const uint8_t treshold = 100;  //----------------- nog in te stellen (in mm)------------------------------
+const int treshold = 500;  //----------------- nog in te stellen (in mm)------------------------------
 
 //buttons
 const uint8_t limitPin = 3;
@@ -22,10 +22,12 @@ const uint8_t greenPin = 10;
 const uint8_t bluePin = 9;
 
 double dist = 0.0;
+double ceilHeight = 0.0;
 int state = 0;
 
 byte fadeVal = 0;
 bool fadeDir = HIGH;
+double hue = 0.0;
 
 double sinVal = 0.0;
 
@@ -53,14 +55,54 @@ bool step(int steps, int speed, bool locking) {  //speed rond 800 zetten
   return LOW;
 }
 
-void setColor(byte red, byte green, byte blue) {
+void setColorRGB(byte red, byte green, byte blue) {
   analogWrite(redPin, red);
   analogWrite(greenPin, green);
   analogWrite(bluePin, blue);
 }
 
+void setColorHSL(double h, double s, double l) {
+  double r, g, b, p, q;
+
+  if (s == 0) {
+    r = g = b = l; // achromatic
+  } else {
+    if(l < 0.5){
+      q = l + s * l;
+    } else {
+      q = l + s - l * s;
+    }
+
+    p = 2 * l - q;
+
+    r = hueToRgb(p, q, h + 1.0/3);
+    g = hueToRgb(p, q, h);
+    b = hueToRgb(p, q, h - 1.0/3);
+  }
+
+  setColorRGB(round(r * 255), round(g * 255), round(b * 255));
+}
+
+double hueToRgb(double p, double q, double t) {
+  if (t < 0){
+    t += 1;
+  }
+  if (t > 1){
+    t -= 1;
+  }
+  if (t < 1.0/6){
+    return p + (q - p) * 6 * t;
+  }
+  if (t < 1.0/2){
+    return q;
+  }
+  if (t < 2.0/3){
+    return p + (q - p) * (2.0/3 - t) * 6;
+  }
+  return p;
+}
+
 void calibrate() {
-  Serial.println("calibrating...");
   digitalWrite(dirPin, HIGH);
   while (digitalRead(limitPin)) {
     digitalWrite(stepPin, LOW);
@@ -68,7 +110,13 @@ void calibrate() {
     digitalWrite(stepPin, HIGH);
     delayMicroseconds(800);
   }
-  Serial.println("done!");
+  digitalWrite(dirPin, LOW);
+  while (!digitalRead(limitPin)) {
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(800);
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(800);
+  }
 }
 
 double distance() {  //takes about 200µs
@@ -82,7 +130,7 @@ double distance() {  //takes about 200µs
     digitalWrite(trigPin, LOW);
 
     double timing = pulseIn(echoPin, HIGH);
-    distance = (timing * 0.034) / 2;
+    distance += (timing * 0.034) / 2;
   }
   return distance * 2;
 }
@@ -92,15 +140,15 @@ void stapAf() {
   bool flashState = LOW;
   while (analogRead(pressurePin) > 350) {
     t1 = millis();
-    if (t0 - t1 >= 200) {
+    if (t1 - t0 >= 300) {
       t0 = millis();
       flashState = !flashState;
     }
 
     if (flashState) {
-      setColor(255, 0, 0);
+      setColorRGB(255, 0, 0);
     } else {
-      setColor(0, 0, 0);
+      setColorRGB(0, 0, 0);
     }
   }
 }
@@ -108,18 +156,29 @@ void stapAf() {
 void zetBrilAf() {
   t0 = millis();
   bool flashState = LOW;
-  distance();
-  while (distance() <= treshold) {
+  bool check = HIGH;
+  int counter = 0;
+  while (check) {
     t1 = millis();
-    if (t0 - t1 >= 200) {
+    if (t1 - t0 >= 200) {
       t0 = millis();
       flashState = !flashState;
     }
-
     if (flashState) {
-      setColor(255, 0, 0);
+      setColorRGB(255, 0, 0);
     } else {
-      setColor(0, 0, 0);
+      setColorRGB(0, 0, 0);
+    }
+
+    double dist = distance();
+    if (dist >= treshold && dist < ceilHeight){ // 5 consecutive height checks
+      counter++;
+    } else {
+      counter = 0;
+    }
+
+    if(counter >= 5){
+      check = LOW;
     }
   }
 }
@@ -135,6 +194,14 @@ void setup() {
   pinMode(pressurePin, INPUT);
 
   calibrate();
+
+  // meet plafond hoogte
+  ceilHeight = 0.0;
+  for(int i = 0; i < 10; i++){
+    ceilHeight += distance();
+  }
+  ceilHeight /= 10;
+  Serial.println(ceilHeight);
 }
 
 void loop() {
@@ -142,7 +209,12 @@ void loop() {
 
   switch (state) {
     case 0:  // wachten tot user 2s stilstaat
-      setColor(0, 255, 0);
+      setColorHSL(hue, 1, 0.5);
+      hue += 0.00002;
+      if(hue > 1){
+        hue -= 1;
+      }
+
       if (analogRead(pressurePin) > 350) {
         if (t1 - t0 >= 2000) {
           state = 1;
@@ -153,20 +225,22 @@ void loop() {
       break;
 
     case 1:  // headset komt op de juiste hoogte
-      setColor(255, 0, 0);
-      while (dist > treshold) {
-        dist = distance();
-        dist = min(100, dist);  // arbitrair 100 gekozen
+      setColorRGB(255, 0, 0);
+      dist = 0.0;
 
-        int steps = (int)(-dist * STEPS_PER_MM);
-
-        if (step(steps, 800, HIGH)) {
-          state = 6;  // error handling
-          break;
+      for(int i = 0; i < 10; i++){
+        double meas = distance();
+        if ((ceilHeight - meas) >= 1000){
+          dist += meas;
+        } else{
+          i--;
         }
+        Serial.println(i);
       }
+      dist /= 10;
+      dist *= 1.20;
 
-      if (step(200, 800, HIGH)) {  // nog een paar cm zakken (JUISTE STEPS NOG IN TE VULLEN) ------------------------------------------------------------------------------
+      if (step((int) (-dist * STEPS_PER_MM), 800, HIGH)) {
         state = 6;  // error handling
         break;
       }
@@ -195,12 +269,13 @@ void loop() {
         }
       }*/
       fadeVal = (byte) (127.5 + 127.5 * sin(sinVal));
-      sinVal += 0.001;
+      sinVal += 0.0002;
 
-      setColor(0, 0, fadeVal);
+      setColorRGB(0, 0, fadeVal);
 
       if (Serial.available() > 0) {
         int input = (char)Serial.read();  // wachten op "e" in de Serial bus (stop signal)
+        Serial.println(input);
         if (input == 'e') {
           state = 3;
         }
@@ -210,11 +285,11 @@ void loop() {
     case 3:  //game is over, wachten tot user is afgestapt, dan bril optillen.
       zetBrilAf();
       stapAf();
-      if (step((int) 100 * STEPS_PER_MM, 800, HIGH)) {
+      if (step(100, 800, HIGH)) {
         state = 6;  // error handling
         break;
       }
-      delay(1000);
+      delay(3000);
       calibrate();
       state = 0;
       break;

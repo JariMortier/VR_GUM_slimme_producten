@@ -9,7 +9,7 @@
 int calibrate(){
   int counter = 0;
   digitalWrite(dirPin, HIGH);
-  while(!digitalRead(limitPin)){
+  while(digitalRead(limitPin)){
     digitalWrite(stepPin, LOW);
     delayMicroseconds(800);
     digitalWrite(stepPin, HIGH);
@@ -26,10 +26,10 @@ void setup() {
   pinMode(dirPin, OUTPUT);
   pinMode(limitPin, INPUT);
 
-  while(!digitalRead(limitPin)){
+  while(digitalRead(limitPin)){
     Serial.println("Press limit switch to initiate...");
   }
-  while(digitalRead(limitPin)){
+  while(!digitalRead(limitPin)){
     Serial.println("Release limit switch to start...");
   }
   int steps = calibrate();
