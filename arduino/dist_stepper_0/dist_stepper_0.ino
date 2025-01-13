@@ -10,7 +10,8 @@ const double STEPS_PER_MM = 4.169186;
 //dist sensor
 const uint8_t trigPin = 5;
 const uint8_t echoPin = 6;
-const int treshold = 500;  //----------------- nog in te stellen (in mm)------------------------------
+const int treshold = 500;
+const int pressureTreshold = 350;
 
 //buttons
 const uint8_t limitPin = 3;
@@ -34,6 +35,8 @@ double sinVal = 0.0;
 //timing
 uint32_t t0 = 0;
 uint32_t t1 = 0;
+uint32_t t_reset = 0;
+const int resetTime = 10000;
 
 //stepping function
 bool step(int steps, int speed, bool locking) {  //speed rond 800 zetten
@@ -138,7 +141,7 @@ double distance() {  //takes about 200µs
 void stapAf() {
   t0 = millis();
   bool flashState = LOW;
-  while (analogRead(pressurePin) > 350) {
+  while (analogRead(pressurePin) > pressureTreshold) {
     t1 = millis();
     if (t1 - t0 >= 300) {
       t0 = millis();
@@ -201,7 +204,8 @@ void setup() {
     ceilHeight += distance();
   }
   ceilHeight /= 10;
-  Serial.println(ceilHeight);
+  t_reset = millis();
+  state = 0;
 }
 
 void loop() {
@@ -215,7 +219,7 @@ void loop() {
         hue -= 1;
       }
 
-      if (analogRead(pressurePin) > 350) {
+      if (analogRead(pressurePin) > pressureTreshold) {
         if (t1 - t0 >= 2000) {
           state = 1;
         }
@@ -230,12 +234,11 @@ void loop() {
 
       for(int i = 0; i < 10; i++){
         double meas = distance();
-        if ((ceilHeight - meas) >= 1000){
+        if ((ceilHeight - meas) >= 1000){ // metingen van objecten korter dan 1m worden niet meegeteld
           dist += meas;
         } else{
           i--;
         }
-        Serial.println(i);
       }
       dist /= 10;
       dist *= 1.20;
@@ -254,20 +257,7 @@ void loop() {
       break;
 
     case 2:  //game is bezig, wacht op serial bus commando
-      /*
-      if (t1 - t0 >= 20) {
-        t0 = millis();
-        if (fadeDir) {
-          fadeVal++;
-        } else {
-          fadeVal--;
-        }
-        if (fadeVal == 255) {
-          fadeDir = LOW;
-        } else if (fadeVal == 0) {
-          fadeDir = HIGH;
-        }
-      }*/
+
       fadeVal = (byte) (127.5 + 127.5 * sin(sinVal));
       sinVal += 0.0002;
 
@@ -275,7 +265,6 @@ void loop() {
 
       if (Serial.available() > 0) {
         int input = (char)Serial.read();  // wachten op "e" in de Serial bus (stop signal)
-        Serial.println(input);
         if (input == 'e') {
           state = 3;
         }
@@ -299,11 +288,27 @@ void loop() {
       state = 0;
       break;
   }
-}
 
-/* led kleurtjes
-wachten op een user: groen / hue shift (rave mode)
-user op sensor: rood
-game start: fade in fade out blauw
-leave platform: flikkerend rood
-*/
+  if(analogRead(pressurePin) > pressureTreshold || state == 0){
+    t_reset = millis();
+    t1 = millis();
+  }
+
+
+  if(t1 - t_reset >= resetTime){
+    bool check = HIGH;
+    for(int i = 0; i < 5; i++){
+      double dist = distance();
+      if (dist < treshold || dist >= ceilHeight){ // 5 consecutive height checks
+        check = LOW;
+        t_reset = millis();
+        break;
+      }
+    }
+    if(check){
+      calibrate();
+      state = 0;
+      check = LOW;
+    }
+  }
+}
